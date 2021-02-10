@@ -12,10 +12,10 @@ MAKEFILE      = Makefile
 
 CC            = gcc
 CXX           = g++
-DEFINES       = -DQT_DEPRECATED_WARNINGS -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_MULTIMEDIA_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_CORE_LIB
+DEFINES       = -DQT_DEPRECATED_WARNINGS -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_MULTIMEDIA_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_CONCURRENT_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -O2 -Wall -W -D_REENTRANT -fPIC $(DEFINES)
 CXXFLAGS      = -pipe -O2 -Wall -W -D_REENTRANT -fPIC $(DEFINES)
-INCPATH       = -I../../software -I. -I../../software -isystem /usr/local/include/opencv4 -I../../../../anaconda3/include/qt -I../../../../anaconda3/include/qt/QtWidgets -I../../../../anaconda3/include/qt/QtMultimedia -I../../../../anaconda3/include/qt/QtGui -I../../../../anaconda3/include/qt/QtNetwork -I../../../../anaconda3/include/qt/QtCore -I. -I../../../../anaconda3/mkspecs/linux-g++
+INCPATH       = -I../../software -I. -I../../software -isystem /usr/local/include/opencv4 -I../../../../anaconda3/include/qt -I../../../../anaconda3/include/qt/QtWidgets -I../../../../anaconda3/include/qt/QtMultimedia -I../../../../anaconda3/include/qt/QtGui -I../../../../anaconda3/include/qt/QtNetwork -I../../../../anaconda3/include/qt/QtConcurrent -I../../../../anaconda3/include/qt/QtCore -I. -I../../../../anaconda3/mkspecs/linux-g++
 QMAKE         = /home/davas/anaconda3/bin/qmake
 DEL_FILE      = rm -f
 CHK_DIR_EXISTS= test -d
@@ -38,7 +38,7 @@ DISTNAME      = software1.0.0
 DISTDIR = /home/davas/Desktop/Projects\ to\ github/software/build/.tmp/software1.0.0
 LINK          = g++
 LFLAGS        = -Wl,-O1 -Wl,-rpath,/home/davas/anaconda3/lib
-LIBS          = $(SUBLIBS) -L/usr/local/lib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_video -lopencv_videoio -lopencv_highgui -L/home/davas/anaconda3/lib -lQt5Widgets -lQt5Multimedia -lQt5Gui -lQt5Network -lQt5Core -lGL -lpthread 
+LIBS          = $(SUBLIBS) -L/usr/local/lib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_video -lopencv_videoio -lopencv_highgui -L/home/davas/anaconda3/lib -lQt5Widgets -lQt5Multimedia -lQt5Gui -lQt5Network -lQt5Concurrent -lQt5Core -lGL -lpthread 
 AR            = ar cqs
 RANLIB        = 
 SED           = sed
@@ -437,6 +437,7 @@ Makefile: ../software.pro ../../../../anaconda3/mkspecs/features/spec_pre.prf \
 		../../../../anaconda3/lib/libQt5Multimedia.prl \
 		../../../../anaconda3/lib/libQt5Gui.prl \
 		../../../../anaconda3/lib/libQt5Network.prl \
+		../../../../anaconda3/lib/libQt5Concurrent.prl \
 		../../../../anaconda3/lib/libQt5Core.prl
 	$(QMAKE) -o Makefile ../software.pro
 ../../../../anaconda3/mkspecs/features/spec_pre.prf:
@@ -621,6 +622,7 @@ Makefile: ../software.pro ../../../../anaconda3/mkspecs/features/spec_pre.prf \
 ../../../../anaconda3/lib/libQt5Multimedia.prl:
 ../../../../anaconda3/lib/libQt5Gui.prl:
 ../../../../anaconda3/lib/libQt5Network.prl:
+../../../../anaconda3/lib/libQt5Concurrent.prl:
 ../../../../anaconda3/lib/libQt5Core.prl:
 qmake: FORCE
 	@$(QMAKE) -o Makefile ../software.pro
@@ -726,7 +728,7 @@ moc_capture_thread.cpp: ../../../../anaconda3/include/qt/QtCore/QString \
 		../capture_thread.h \
 		moc_predefs.h \
 		../../../../anaconda3/bin/moc
-	/home/davas/anaconda3/bin/moc $(DEFINES) --include ./moc_predefs.h -I/home/davas/anaconda3/mkspecs/linux-g++ -I'/home/davas/Desktop/Projects to github/software' -I'/home/davas/Desktop/Projects to github/software' -I/usr/local/include/opencv4 -I/home/davas/anaconda3/include/qt -I/home/davas/anaconda3/include/qt/QtWidgets -I/home/davas/anaconda3/include/qt/QtMultimedia -I/home/davas/anaconda3/include/qt/QtGui -I/home/davas/anaconda3/include/qt/QtNetwork -I/home/davas/anaconda3/include/qt/QtCore -I. -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 -I/usr/include/c++/9/backward -I/usr/lib/gcc/x86_64-linux-gnu/9/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include ../capture_thread.h -o moc_capture_thread.cpp
+	/home/davas/anaconda3/bin/moc $(DEFINES) --include ./moc_predefs.h -I/home/davas/anaconda3/mkspecs/linux-g++ -I'/home/davas/Desktop/Projects to github/software' -I'/home/davas/Desktop/Projects to github/software' -I/usr/local/include/opencv4 -I/home/davas/anaconda3/include/qt -I/home/davas/anaconda3/include/qt/QtWidgets -I/home/davas/anaconda3/include/qt/QtMultimedia -I/home/davas/anaconda3/include/qt/QtGui -I/home/davas/anaconda3/include/qt/QtNetwork -I/home/davas/anaconda3/include/qt/QtConcurrent -I/home/davas/anaconda3/include/qt/QtCore -I. -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 -I/usr/include/c++/9/backward -I/usr/lib/gcc/x86_64-linux-gnu/9/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include ../capture_thread.h -o moc_capture_thread.cpp
 
 moc_mainwindow.cpp: ../../../../anaconda3/include/qt/QtWidgets/QMainWindow \
 		../../../../anaconda3/include/qt/QtWidgets/qmainwindow.h \
@@ -881,7 +883,7 @@ moc_mainwindow.cpp: ../../../../anaconda3/include/qt/QtWidgets/QMainWindow \
 		../mainwindow.h \
 		moc_predefs.h \
 		../../../../anaconda3/bin/moc
-	/home/davas/anaconda3/bin/moc $(DEFINES) --include ./moc_predefs.h -I/home/davas/anaconda3/mkspecs/linux-g++ -I'/home/davas/Desktop/Projects to github/software' -I'/home/davas/Desktop/Projects to github/software' -I/usr/local/include/opencv4 -I/home/davas/anaconda3/include/qt -I/home/davas/anaconda3/include/qt/QtWidgets -I/home/davas/anaconda3/include/qt/QtMultimedia -I/home/davas/anaconda3/include/qt/QtGui -I/home/davas/anaconda3/include/qt/QtNetwork -I/home/davas/anaconda3/include/qt/QtCore -I. -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 -I/usr/include/c++/9/backward -I/usr/lib/gcc/x86_64-linux-gnu/9/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include ../mainwindow.h -o moc_mainwindow.cpp
+	/home/davas/anaconda3/bin/moc $(DEFINES) --include ./moc_predefs.h -I/home/davas/anaconda3/mkspecs/linux-g++ -I'/home/davas/Desktop/Projects to github/software' -I'/home/davas/Desktop/Projects to github/software' -I/usr/local/include/opencv4 -I/home/davas/anaconda3/include/qt -I/home/davas/anaconda3/include/qt/QtWidgets -I/home/davas/anaconda3/include/qt/QtMultimedia -I/home/davas/anaconda3/include/qt/QtGui -I/home/davas/anaconda3/include/qt/QtNetwork -I/home/davas/anaconda3/include/qt/QtConcurrent -I/home/davas/anaconda3/include/qt/QtCore -I. -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 -I/usr/include/c++/9/backward -I/usr/lib/gcc/x86_64-linux-gnu/9/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include ../mainwindow.h -o moc_mainwindow.cpp
 
 compiler_moc_source_make_all:
 compiler_moc_source_clean:
@@ -1125,7 +1127,8 @@ capture_thread.o: ../capture_thread.cpp ../capture_thread.h \
 		../../../../anaconda3/include/qt/QtCore/qsharedpointer.h \
 		../../../../anaconda3/include/qt/QtCore/qsharedpointer_impl.h \
 		../../../../anaconda3/include/qt/QtCore/QTime \
-		../../../../anaconda3/include/qt/QtCore/qdatetime.h
+		../../../../anaconda3/include/qt/QtCore/qdatetime.h \
+		../../../../anaconda3/include/qt/QtCore/QVector
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o capture_thread.o ../capture_thread.cpp
 
 mainwindow.o: ../mainwindow.cpp ../mainwindow.h \

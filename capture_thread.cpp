@@ -4,6 +4,8 @@
 #include <QDebug>
 #include <QTime>
 #include <iostream>
+#include <vector>
+#include <QVector>
 #include <opencv2/highgui.hpp>
 
 capture_thread::capture_thread(std::string camname, QMutex *lock):
@@ -70,31 +72,48 @@ void capture_thread::run()
 {
     // a helpful code snippet
     // https://www.kurokesu.com/main/2020/07/12/pulling-full-resolution-from-a-webcam-with-opencv-windows/
+
+    // set thread running
     setRunning(true);
+
+    // open webcam
     cv::VideoCapture cap(camname);
     if (!cap.isOpened()){
         CV_Assert("Failed to open camera.");
     }
 
-    cap.set(cv::CAP_PROP_FPS, 30);
+    //set framerate, width and height
+//    cap.set(cv::CAP_PROP_FPS, 30);
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
 
+    // get the actual frame height and width we got.
     frame_width=cap.get(cv::CAP_PROP_FRAME_WIDTH);
     frame_height=cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    float fps = cap.get(cv::CAP_PROP_FPS);
+    qDebug() << QString("frame %1(w) x %2(h) @fps %3").arg(frame_width).arg(frame_height).arg(fps);
 
-    qDebug() << QString("frame width %1 height %2").arg(frame_width).arg(frame_height);
+    // create the blank frame.
+    blankFrame = new cv::Mat(frame_height, frame_width, CV_8U, 255);
+
+    // create segmentor
+    segmentor = cv::createBackgroundSubtractorMOG2(500, 16, true);
+
+    // tmp_frames for resource allocation.
     cv::Mat tmp_frame;
     cv::Mat tmp_frame2;
+
     // for fps calculation.
     int frame_count=0;
     QTime timer;
     bool first_time=true;
     const int n_frames_to_consider=30;
-    qDebug() << QString("running status %1").arg(running);
 
     while(running){
-//        qDebug() <<QString("Video saving status - %1").arg(video_saving_status);
+
+        if ( pause )
+            continue;
+
         cap >> tmp_frame;
         if(tmp_frame.empty())
             break;
@@ -104,6 +123,9 @@ void capture_thread::run()
             cv::flip(tmp_frame, tmp_frame2, 1);
             tmp_frame = tmp_frame2;
         }
+
+        if (motion_detecting_status && segmentor != nullptr)
+            motionDetect(tmp_frame);
 
         if (fps_calculating)
         {
@@ -153,8 +175,10 @@ void capture_thread::run()
 
     if(video_saving_status != STOPPED)
         stopSavingVideo();
-    cv::Mat *mat_cal = new cv::Mat(frame_height, frame_width, CV_8U, 255);
-    emit frameCaptured(mat_cal);
+
+    emit frameCaptured(blankFrame);
+    emit fgMaskCaptured(blankFrame);
+    emit bgImageCaptured(blankFrame);
     cap.release();
     setRunning(false);
 
@@ -220,18 +244,108 @@ capture_thread::VideoSavingStatus capture_thread::getVideoSavingStatus()
     return video_saving_status;
 }
 
+void capture_thread::setMotionDetectingStatus(bool status){
+
+    data_lock->lock();
+    motion_detecting_status=status;
+    motion_detected = false;
+    data_lock->unlock();
+}
+
+void capture_thread::motionDetect(cv::Mat &frame)
+{
+    cv::Mat fgMask;
+    segmentor->apply(frame, fgMask);
+
+    if (fgMask.empty())
+        return;
+
+    //apply thresholding on fgmask
+    cv::threshold(fgMask, fgMask, 25, 255, cv::THRESH_BINARY);
+
+    // remove noise by erosion than dilation.
+    int noise_size = 9;
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(noise_size, noise_size));
+    cv::erode(fgMask, fgMask, kernel);
+    kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(noise_size, noise_size));
+    cv::dilate(fgMask, fgMask, kernel, cv::Point(-1, -1), 3);
+
+    // update fgMaskToEmit
+    data_lock->lock();
+    cv::cvtColor(fgMask, fgMaskToEmit, cv::COLOR_GRAY2RGB);
+    data_lock->unlock();
+
+    // update background image
+    data_lock->lock();
+    segmentor->getBackgroundImage(bgImageToEmit);
+    cv::cvtColor(bgImageToEmit, bgImageToEmit, cv::COLOR_BGR2RGB);
+    data_lock->unlock();
+
+    // emit background image and fgMaskToEmit
+    emit fgMaskCaptured(&fgMaskToEmit);
+    emit bgImageCaptured(&bgImageToEmit);
+
+    // find contours
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(fgMask, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+
+    // motion detecting using contours.
+    bool has_motion = contours.size() > 0;
+
+    // update the statuses
+    if(!motion_detected && has_motion)
+    {
+        motion_detected = true;
+        setVideoSavingStatus(STARTING);
+//        qDebug() << "new motion detected. ";
+    }
+    else if (motion_detected && !has_motion)
+    {
+        motion_detected=false;
+        setVideoSavingStatus(STOPPING);
+    }
+
+    // create rectangles around moving objects
+    cv::Scalar color = cv::Scalar(0, 0, 255);
+    int max_area=0;
+    cv::Rect choosen_rect;
+
+    // find the biggest rectangle and draw it.
+    for(size_t i=0; i<contours.size(); i++)
+    {
+        cv::Rect rect = cv::boundingRect(contours[i]);
+        if (rect.area() > max_area)
+        {
+            max_area = rect.area();
+            choosen_rect = rect;
+        }
+    }
+    cv::rectangle(frame, choosen_rect, color, 1);
+
+}
 
 
+void capture_thread::setPause(bool doPause)
+{
+    data_lock->lock();
+    pause = doPause;
+    data_lock->unlock();
+}
 
+void capture_thread::setVideoMode(QString videoFile)
+{
+    data_lock->lock();
+    webcam_mode = false;
+    videoFilePath = videoFile;
+    data_lock->unlock();
+}
 
-
-
-
-
-
-
-
-
+void capture_thread::setWebcamMode()
+{
+    data_lock->lock();
+    webcam_mode = true;
+    data_lock->unlock();
+}
 
 
 

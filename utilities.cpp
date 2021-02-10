@@ -8,14 +8,14 @@ QString utilities::getDataPath()
 {
     // get the standard locations
     QString user_movie_path = QStandardPaths::standardLocations( QStandardPaths::MoviesLocation)[0];
-    qDebug() <<QString("user movie path : " ) + user_movie_path;
+//    qDebug() <<QString("user movie path : " ) + user_movie_path;
     // initialise a movie dir and make a new folder
     QDir movie_dir(user_movie_path);
     movie_dir.mkpath("software");
 
     // return the path of newly created folder.
     QString directory = movie_dir.absoluteFilePath("software");
-    qDebug() <<"directory created : " + directory;
+//    qDebug() <<"directory created : " + directory;
     return directory;
 }
 

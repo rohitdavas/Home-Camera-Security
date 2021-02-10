@@ -102,32 +102,61 @@ void MainWindow::initUIViewArea()
 {
     // grid layout system to divide up the screen.
     QGridLayout *main_layout = new QGridLayout();
-    // graphics view
-    imageScene1 = new QGraphicsScene(0,0,12,1,this);
+
+    // Image Scene1 for real video
+    imageScene1 = new QGraphicsScene(0, 0, 6, 6, this);
+    imageScene1->addText("Real");
     imageView1 = new QGraphicsView(imageScene1);
     imageView1->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    imageScene2 = new QGraphicsScene(0,2,12,1,this);
+    imageView1->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    // image Scene2 for foreground mask
+    imageScene2 = new QGraphicsScene(0, 6, 6, 6, this);
+    imageScene2->addText("predicted Foreground Mask");
     imageView2 = new QGraphicsView(imageScene2);
     imageView2->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    main_layout->addWidget(imageView1, 0, 0, 12, 1);
-    main_layout->addWidget(imageView2, 0 ,1, 12, 1);
+    imageView2->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    // center layout.
+    // image Scene3 for background image
+    imageScene3 = new QGraphicsScene(6, 0, 6, 6, this);
+    imageScene3->addText("Background Image");
+    imageView3 = new QGraphicsView(imageScene3);
+    imageView3->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    imageView3->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    imageScene4 = new QGraphicsScene(6, 6, 6, 6, this);
+    imageScene4->addText("Empty.");
+    imageView4 = new QGraphicsView(imageScene4);
+    imageView4->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    imageView4->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    main_layout->addWidget(imageView1, 0, 0, 6, 6);
+    main_layout->addWidget(imageView2, 0, 6, 6, 6);
+    main_layout->addWidget(imageView3, 6, 0, 6, 6);
+    main_layout->addWidget(imageView4, 6, 6, 6, 6);
+
+    // a panel for monitor button , record button
     QGridLayout *tools_layout = new QGridLayout();
-    main_layout->addLayout(tools_layout, 12, 0, 1, 2);
+    main_layout->addLayout(tools_layout, 12, 0, 1, 12);
 
-//    // monitor box
-//    monitorCheckBox = new QCheckBox(this);
-//    monitorCheckBox->setText("Monitor on/off");
-//    tools_layout->addWidget(monitorCheckBox, 0, 0);
+    // monitor box
+    monitorCheckBox = new QCheckBox(this);
+    monitorCheckBox->setText("Monitor on/off");
+    tools_layout->addWidget(monitorCheckBox, 0, 0);
+    connect(monitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(updateMonitorStatus(int)));
 
     //record button
     recordButtonText = new QList<QString>({"Record", "Stop Record"});
     recordButton = new QPushButton(recordButtonText->at(0), this);
-    tools_layout->addWidget(new QLabel(this), 0, 0);
-    tools_layout->addWidget(recordButton, 0, 1, Qt::AlignHCenter);
-    tools_layout->addWidget(new QLabel(this), 0, 2);
+    tools_layout->addWidget(recordButton, 0, 1);
     connect(recordButton, SIGNAL(clicked(bool)), this, SLOT(recordingStartStop()));
+
+    // pause button
+    playPauseButtonText = new QList<QString>({"Play", "Pause"});
+    playPauseButton = new QPushButton(playPauseButtonText->at(1), this);
+    playPauseButton->setCheckable(true);
+    tools_layout->addWidget(playPauseButton, 0, 2);
+    connect(playPauseButton, SIGNAL(clicked(bool)), this, SLOT(togglePlayPause(bool)));
 
 //    // list view bottom
 //    saved_list = new QListView(this);
@@ -182,7 +211,6 @@ void MainWindow::updateStatusBar(bool includeDefault){
     }
     mainStatusLabel->setText(label);
 }
-
 
 void MainWindow::cameraInfo(){
     QMessageBox msgBox;
@@ -270,6 +298,7 @@ void MainWindow::cameraOpen(){
 
         // open some buttons as visible.
         toggleHideActions(true);
+        capturer->setWebcamMode();
 
 }
 
@@ -303,33 +332,56 @@ void MainWindow::updateFrame(cv::Mat *mat)
     data_lock->lock();
     currentframe = *mat;
     data_lock->unlock();
+    updateView(imageScene1, imageView1, currentframe);
 
+}
+
+void MainWindow::updateFgMask(cv::Mat *mat){
+
+    // update the data.
+    data_lock->lock();
+    currentFgMask = *mat;
+    data_lock->unlock();
+    updateView(imageScene2, imageView2, currentFgMask);
+}
+
+void MainWindow::updateBackgroundImage(cv::Mat *mat)
+{
+    data_lock->lock();
+    currentBgImage = *mat;
+    data_lock->unlock();
+    updateView(imageScene3, imageView3, currentBgImage);
+
+}
+
+void MainWindow::updateView(QGraphicsScene *scene, QGraphicsView *view, cv::Mat &image)
+{
     QImage frame(
-                currentframe.data,
-                currentframe.cols,
-                currentframe.rows,
-                currentframe.step,
+                image.data,
+                image.cols,
+                image.rows,
+                image.step,
                 QImage::Format_RGB888);
-    QPixmap image = QPixmap::fromImage(frame);
 
-    imageScene1->clear();
-    imageScene2->clear();
+    QPixmap Image = QPixmap::fromImage(frame);
 
-    imageView1->resetMatrix();
-    imageView2->resetMatrix();
+    scene->clear();
+    view->resetMatrix();
 
-    if(!image.isNull())
+    if(!Image.isNull())
     {
-        QPixmap image1 = image.scaledToWidth(imageView1->width());
-        QPixmap image2 = image.scaledToWidth(imageView2->width());
-        imageScene1->addPixmap(image1);
-        imageScene2->addPixmap(image2);
+        Image = Image.scaledToWidth(view->width());
+        Image = Image.scaledToHeight(view->height());
 
-        imageScene1->update();
-        imageScene2->update();
+//        if (view->width() > view->height())
+//            Image = Image.scaledToWidth(view->width());
+//        else
+//            Image = Image.scaledToHeight(view->height());
 
-        imageView1->setSceneRect(image1.rect());
-        imageView2->setSceneRect(image2.rect());
+        scene->addPixmap(Image);
+        scene->update();
+        view->setSceneRect(Image.rect());
+
     }
 }
 
@@ -371,6 +423,7 @@ void MainWindow::toggleHideActions(bool show)
     stopCameraAction->setVisible(show);
     fpsCalculationAction->setVisible(show);
     cameraMirrorAction->setVisible(show);
+    monitorCheckBox->setVisible(show);
 }
 
 void MainWindow::recordingStartStop()
@@ -413,11 +466,54 @@ void MainWindow::updateVideoRecordStatus(int status, QString saved_video_name)
 
 }
 
-void MainWindow::closeCapturer(bool runClosed)
+void MainWindow::closeCapturer(bool)
 {
 
     delete capturer;
     capturer = nullptr;
     qDebug() <<"Closed the thread.";
     clickedRecord=false;
+
+    playPauseButton->setText(playPauseButtonText->at(0));
+    playPauseButton->setChecked(false);
+}
+
+void MainWindow::updateMonitorStatus(int checked)
+{
+    if (capturer == nullptr)
+        return;
+
+    qDebug() << QString("Updating monitor status with status : %1").arg(checked);
+
+    if (checked)
+    {
+        connect(capturer, &capture_thread::fgMaskCaptured, this, &MainWindow::updateFgMask);
+        connect(capturer, &capture_thread::bgImageCaptured, this, &MainWindow::updateBackgroundImage);
+        capturer->setMotionDetectingStatus(true);
+    }
+
+    else
+    {
+        capturer->setMotionDetectingStatus(false);
+    }
+
+    qDebug() << "done updateMonitorStatus";
+}
+
+
+void MainWindow::togglePlayPause(bool clicked)
+{
+    if (capturer == nullptr)
+        return;
+
+    if (!playPauseButton->isChecked())
+    {
+        playPauseButton->setText( playPauseButtonText->at(1) );
+        capturer->setPause(false);
+    }
+
+    else{
+        playPauseButton->setText( playPauseButtonText->at(0));
+        capturer->setPause(true);
+    }
 }

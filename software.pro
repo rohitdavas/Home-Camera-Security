@@ -22,7 +22,7 @@ SOURCES += main.cpp \
     capture_thread.cpp \
     mainwindow.cpp \
     utilities.cpp
-QT += widgets multimedia
+QT += widgets multimedia core gui network concurrent
 
 HEADERS += \
     capture_thread.h \
